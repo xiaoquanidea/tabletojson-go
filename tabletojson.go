@@ -6,8 +6,12 @@ import (
 	"strings"
 )
 
-func Convert(reader io.ReadCloser) ([]Table, error) {
-	tables := []Table{}
+func Convert(reader io.ReadCloser, stringTrimmer ...func(str string) string) ([]*Table, error) {
+	tables := make([]*Table, 0)
+
+	if len(stringTrimmer) == 0 {
+		stringTrimmer = append(stringTrimmer, func(str string) string { return str })
+	}
 
 	doc, err := goquery.NewDocumentFromReader(reader)
 	if err != nil {
@@ -22,24 +26,24 @@ func Convert(reader io.ReadCloser) ([]Table, error) {
 
 			trSelection.Find("th").Each(func(thi int, thSelection *goquery.Selection) {
 				row = append(row, Column{
-					ParentName: strings.TrimSpace(thSelection.Text()),
+					ParentName: stringTrimmer(strings.TrimSpace(thSelection.Text())),
 				})
 			})
 
 			trSelection.Find("td").Each(func(tdi int, tdSelection *goquery.Selection) {
 				if len(row) == 0 || len(row) == tdi {
 					row = append(row, Column{
-						ParentValue: strings.TrimSpace(tdSelection.Text()),
+						ParentValue: stringTrimmer(strings.TrimSpace(tdSelection.Text())),
 					})
 				} else {
-					row[tdi].ParentValue = strings.TrimSpace(tdSelection.Text())
+					row[tdi].ParentValue = stringTrimmer(strings.TrimSpace(tdSelection.Text()))
 				}
 			})
 
 			table = append(table, row)
 		})
 
-		tables = append(tables, table)
+		tables = append(tables, &table)
 	})
 
 	return tables, nil
